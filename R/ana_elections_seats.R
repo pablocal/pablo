@@ -9,12 +9,12 @@
 #' @param votes Character. Name of the columns with the number of votes.
 #' @param seats Numeric. Number of seats to be assigned.
 #' @param blanks Numeric. Number of blank votes in the circunscription. Default is zero.
-#' @param barrier Numeric. Vote percentafe for electoral barrier. Default is zero.
+#' @param barrier Numeric. Vote percentage for electoral barrier. Default is zero.
 #' @return A data frame with three columns party, votes and seats.
 #' @export
 
 
-seats_dhont <- function(data, party, votes, seats, blanks = 0, barrier = 0){
+seats_dhont <- function(df, party, votes, seats, blanks = 0, barrier = 0){
 
 
   colnames(df) <- c("Party", "Votes")

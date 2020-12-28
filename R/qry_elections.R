@@ -49,8 +49,8 @@ check_cross_month_year <- function(elec, year, month){
   year_month <- pablo:::elec_id_checks[pablo:::elec_id_checks$year == year & pablo:::elec_id_checks$elec_id == elec, ]
   elec_months <- year_month$month
 
-  if(nrow(year_month) == 0)stop("There was no election of this type for the input year or data is not available")
-  if(!(month %in% elec_months))stop("There was no election of the type for the input month or data is not avalable")
+  if(nrow(year_month) == 0)stop(paste0("There was no election of this type for the input year or data is not available: year = ", year, " and month = ", month))
+  if(!(month %in% elec_months))stop(paste0("There was no election of the type for the input month or data is not available: year = ", year, " and month = ", month))
 
 }
 
@@ -213,27 +213,32 @@ write_sql_query <- function(queries){
   } else if (!is.na(queries$caut) & queries$by == "comunidad") {
     caut <- paste0('AND caut = "', queries$caut, '" AND cprov = "99"')
   } else if (is.na(queries$caut) & queries$by == "comunidad") {
-    caut <- paste0('AND caut = "99" AND cprov = "99"')
+    caut <- paste0('AND cprov = "99"')
   } else if (!is.na(queries$caut)){
     caut <- paste0('AND caut = "', queries$caut, '"')
   } else {
     caut <- ""
   }
 
-  if(is.na(queries$cprov) & queries$by == "provincia"){
-    cprov <- paste0('AND cprov = "99" AND constituency_id =  9')
+
+  if(is.na(queries$cprov) & queries$by == "provincia" & queries$elec == 3){
+    cprov <- ""
+  } else if (is.na(queries$cprov) & queries$by == "provincia"){
+    cprov <- " AND cprov != 99"
   } else if (!is.na(queries$cprov)) {
     cprov <- paste0('AND cprov = "', queries$cprov, '"')
   } else {
     cprov <- ""
   }
 
-  if(is.na(queries$cmun)){
-    cmun <- ""
+  if(is.na(queries$cmun) & queries$by == "municipio"){
+    cmun <- 'AND dist_mun = 99'
   } else if(!is.na(queries$cmun) & queries$by == "municipio") {
     cmun <- paste0('AND cmun = "', queries$cmun, '"', ' AND dist_mun = 99')
-  } else {
+  } else if(!is.na(queries$cmun)) {
     cmun <- paste0('AND cmun = "', queries$cmun, '"')
+  } else {
+    cmun <- ""
   }
 
   if(is.na(queries$cdist)){
@@ -324,12 +329,12 @@ extract_data <- function(queries){
 clean_candidature_names <- function(elec, extract){
 
   if(elec == 3){
-    extract$merge_votes_cand <- extract$merge_votes_cand %>%
+    extract$query_candidates <- extract$query_candidates %>%
       rowwise() %>%
       mutate(candidate_name = str_squish(candidate_name))
   }
 
-  # generate list of nacional names for the parties
+  # generate list of national names for the parties
   party_names <- extract$query_candidatures %>%
     left_join(extract$query_votes, by = "candidature_id") %>%
     group_by(candidature_id_country, candidature_id, candidature_acron) %>%
@@ -384,18 +389,27 @@ merge_votes_candidature <- function(elec, extract){
 
 collapse_votes <-  function(queries, extract){
 
-  switch (queries$by[1],
-          "nacional" = group_vars <- c("elec_id", "caut", "candidature_acron"),
-          "comunidad" = group_vars <- c("elec_id", "caut", "candidature_acron"),
-          "provincia" = group_vars <- c("elec_id", "caut", "cprov", "candidature_acron"),
-          "municipio" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "candidature_acron"),
-          "distrito" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "candidature_acron"),
-          "seccion" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "candidature_acron"),
-          "mesa" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "cmesa", "candidature_acron")
-  )
+  if(queries$elec[1] == 3  & queries$by[1] == "provincia"){
+
+      group_vars <- c("elec_id", "caut", "cprov", "constituency_id", "candidature_acron")
+
+  } else {
+
+    switch (queries$by[1],
+            "nacional" = group_vars <- c("elec_id", "caut", "candidature_acron"),
+            "comunidad" = group_vars <- c("elec_id", "caut", "candidature_acron"),
+            "provincia" = group_vars <- c("elec_id", "caut", "cprov", "candidature_acron"),
+            "municipio" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "candidature_acron"),
+            "distrito" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "candidature_acron"),
+            "seccion" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "candidature_acron"),
+            "mesa" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "cmesa", "candidature_acron")
+    )
+
+
+  }
 
   arrange_vars <- c(group_vars[-length(group_vars)], "votes_candidature")
-  if(queries$elec[1] == 3) {c(group_vars, "candidate_name")}
+  if(queries$elec[1] == 3) {group_vars <- c(group_vars, "candidate_name")}
   select_vars <- c(group_vars, "votes_candidature")
   if(queries$by[1] %in% c("nacional", "comunidad", "provincia", "municipio")) {select_vars <- c(select_vars, "candidates_elected")}
 
@@ -413,15 +427,25 @@ collapse_turn <- function(queries, extract){
   base_vars_upper <- c("population", "n_precint", "census_ine", "census_escrut", "census_cere", "turnout_pre_1", "turnout_pre_2", "votes_blank", "votes_null", "votes_candidatures", "seats")
   base_vars_down <- c("census_ine", "census_escrut", "census_cere", "turnout_pre_1", "turnout_pre_2", "votes_blank", "votes_null", "votes_candidatures")
 
-  switch (queries$by[1],
-          "nacional" = group_vars <- c("elec_id", "year", "month", "caut"),
-          "comunidad" = group_vars <- c("elec_id", "year", "month", "caut"),
-          "provincia" = group_vars <- c("elec_id", "year", "month", "caut", "cprov"),
-          "municipio" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun"),
-          "distrito" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist"),
-          "seccion" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec"),
-          "mesa" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec", "cmesa")
-  )
+
+  if(queries$elec[1] == 3  & queries$by[1] == "provincia"){
+
+     group_vars <- c("elec_id", "year", "month", "caut", "cprov", "constituency_id")
+
+  } else {
+
+    switch (queries$by[1],
+            "nacional" = group_vars <- c("elec_id", "year", "month", "caut"),
+            "comunidad" = group_vars <- c("elec_id", "year", "month", "caut"),
+            "provincia" = group_vars <- c("elec_id", "year", "month", "caut", "cprov"),
+            "municipio" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun"),
+            "distrito" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist"),
+            "seccion" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec"),
+            "mesa" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec", "cmesa")
+    )
+
+
+    }
 
   if(queries$by[1] %in% c("nacional", "comunidad", "provincia", "municipio")){
 
@@ -445,8 +469,16 @@ collapse_turn <- function(queries, extract){
 
 output_summary <- function(elec, queries){
 
+  if(queries$elec[1] == 3 & queries$by[1] == "provincia"){
+    output_vars_upper <- c("constituency_id", "population", "census_escrut", "turnout_final", "votes_blank", "votes_null", "votes_candidatures", "votes_valid", "seats", "candidature_acron", "candidate_name", "votes_candidature", "candidates_elected")
+    output_vars_down <- c("census_escrut", "turnout_final", "votes_blank", "votes_null", "votes_candidatures", "votes_valid", "candidature_acron", "candidate_name", "votes_candidature")
+  } else if(queries$elec[1] == 3 & queries$by[1] != "provincia"){
+    output_vars_upper <- c("population", "census_escrut", "turnout_final", "votes_blank", "votes_null", "votes_candidatures", "votes_valid", "seats", "candidature_acron", "candidate_name", "votes_candidature", "candidates_elected")
+    output_vars_down <- c("census_escrut", "turnout_final", "votes_blank", "votes_null", "votes_candidatures", "votes_valid", "candidature_acron", "candidate_name", "votes_candidature")
+  } else {
   output_vars_upper <- c("population", "census_escrut", "turnout_final", "votes_blank", "votes_null", "votes_candidatures", "votes_valid", "seats", "candidature_acron", "votes_candidature", "candidates_elected")
   output_vars_down <- c("census_escrut", "turnout_final", "votes_blank", "votes_null", "votes_candidatures", "votes_valid", "candidature_acron", "votes_candidature")
+  }
 
   switch (queries$by[1],
           "nacional" = select_vars <- c("elec_id", "year", "month", "caut", output_vars_upper),
@@ -492,7 +524,7 @@ output_all <- function(elec, queries){}
 
 format_output <- function(queries, extract){
 
-  ## clean the cnadidates and candidatures names
+  ## clean the candidates and candidatures names
   extract <- clean_candidature_names(queries$elec[1], extract)
 
   ## merge candidate and candidatures with votes
@@ -513,6 +545,13 @@ format_output <- function(queries, extract){
           "mesa" = join_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "cmesa")
   )
 
+  ## queries
+  if(queries$elec[1] == 3  & queries$by[1] == "provincia"){
+
+    join_vars <- c(join_vars, "constituency_id")
+
+  }
+
     elec <- right_join(turn, votes, by = join_vars)
 
   ## prepare output
@@ -520,6 +559,10 @@ format_output <- function(queries, extract){
     elec <- output_summary(elec, queries)
   } else {
     elec <- output_all(elec, queries)
+  }
+
+  if(queries$elec[1] == 3  & queries$by[1] == "provincia"){
+    elec <- rename(elec, cisla = constituency_id)
   }
 
   return(as_tibble(elec))
@@ -532,7 +575,7 @@ format_output <- function(queries, extract){
 #'
 #' This function gets election data from a repository.
 #'
-#' @param elec Character. Type of election "cong", "sen", "municipio", "ref", "euro", "cabildo"
+#' @param elec Character. Type of election "congreso", "senado", "municipio", "referendum", "euro", "cabildo"
 #' @param year Numeric. Year of the election
 #' @param month Numeric. Month of the election only necessary for 2019 "congreso" and "senado". Default is NULL.
 #' @param ine_geo_code Character. INE geographical code to retrieve the results from a given area.
