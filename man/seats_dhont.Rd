@@ -4,11 +4,9 @@
 \alias{seats_dhont}
 \title{Compute D'Hondt rule to assign seats}
 \usage{
-seats_dhont(data, party, votes, seats, blanks = 0, barrier = 0)
+seats_dhont(df, party, votes, seats, blanks = 0, barrier = 0)
 }
 \arguments{
-\item{data}{Data frame. Input data frame with two columns party and votes.}
-
 \item{party}{Character. Name of the column for parties.}
 
 \item{votes}{Character. Name of the columns with the number of votes.}
@@ -17,7 +15,9 @@ seats_dhont(data, party, votes, seats, blanks = 0, barrier = 0)
 
 \item{blanks}{Numeric. Number of blank votes in the circunscription. Default is zero.}
 
-\item{barrier}{Numeric. Vote percentafe for electoral barrier. Default is zero.}
+\item{barrier}{Numeric. Vote percentage for electoral barrier. Default is zero.}
+
+\item{data}{Data frame. Input data frame with two columns party and votes.}
 }
 \value{
 A data frame with three columns party, votes and seats.

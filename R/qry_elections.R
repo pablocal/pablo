@@ -190,12 +190,12 @@ arrange_queries <- function(elec,
 
 
   ## finalise queries with table
-  data_to_extract$table <- ifelse(data_to_extract$by %in% c("nacional", "comunidad", "provincia") & data_to_extract$data_orig == "turn", "store.mir_elec_upper_mun_turn",
-                                      ifelse(data_to_extract$by %in% c("nacional", "comunidad", "provincia") & data_to_extract$data_orig == "votes", "store.mir_elec_upper_mun_votes",
-                                             ifelse(data_to_extract$by == "municipio" & data_to_extract$data_orig == "turn", "store.mir_elec_mun_turn",
-                                                    ifelse(data_to_extract$by == "municipio" & data_to_extract$data_orig == "votes", "store.mir_elec_mun_votes",
-                                                           ifelse(data_to_extract$by %in% c("distrito", "seccion", "mesa") & data_to_extract$data_orig == "turn", "store.mir_elec_precint_turn",
-                                                                  "store.mir_elec_precint_votes")))))
+  data_to_extract$table <- ifelse(data_to_extract$by %in% c("nacional", "comunidad", "provincia") & data_to_extract$data_orig == "turn", "elections.mir_elec_upper_mun_turn",
+                                      ifelse(data_to_extract$by %in% c("nacional", "comunidad", "provincia") & data_to_extract$data_orig == "votes", "elections.mir_elec_upper_mun_votes",
+                                             ifelse(data_to_extract$by == "municipio" & data_to_extract$data_orig == "turn", "elections.mir_elec_mun_turn",
+                                                    ifelse(data_to_extract$by == "municipio" & data_to_extract$data_orig == "votes", "elections.mir_elec_mun_votes",
+                                                           ifelse(data_to_extract$by %in% c("distrito", "seccion", "mesa") & data_to_extract$data_orig == "turn", "elections.mir_elec_precint_turn",
+                                                                  "elections.mir_elec_precint_votes")))))
 
 
     return(data_to_extract)
@@ -205,7 +205,7 @@ arrange_queries <- function(elec,
 # 2. Extract data ---------------------------------------------------------
 
 
-# 2.1 Auxiliary functions for extrac data ---------------------------------
+# 2.1 Auxiliary functions for extract data --------------------------------
 write_sql_query <- function(queries){
 
   if(queries$caut == 99 & queries$by == "nacional"){
@@ -259,8 +259,13 @@ write_sql_query <- function(queries){
     cmesa <- paste0('AND cmesa = "', queries$cmesa, '"')
   }
 
+  if(queries$by == "municipio"){
+    query_where <- paste(cprov, cmun, cdist, csec, cmesa)
+  } else {
+    query_where <- paste(caut, cprov, cmun, cdist, csec, cmesa)
+  }
 
-  query_where <- paste(caut, cprov, cmun, cdist, csec, cmesa)
+
   query_where <- trimws(query_where)
 
 
@@ -285,11 +290,11 @@ list_sql_queries <- function(queries){
   sql_queries <- list(
     query_turn = write_sql_query(queries[queries$data_orig == "turn",]),
     query_votes = write_sql_query(queries[queries$data_orig == "votes",]),
-    query_candidatures = paste0("SELECT candidature_acron, candidature_id, candidature_id_country FROM store.mir_elec_candidatures WHERE elec_id = ", queries$elec[1], " AND year = ", queries$year[1], " AND month = ", queries$month[1], ";")
+    query_candidatures = paste0("SELECT candidature_acron, candidature_id, candidature_id_country FROM elections.mir_elec_candidatures WHERE elec_id = ", queries$elec[1], " AND year = ", queries$year[1], " AND month = ", queries$month[1], ";")
   )
 
   if(queries$elec[1] == 3){
-    sql_queries$query_candidates = paste0("SELECT constituency_id, cprov, cmun, candidature_id, candidate_name FROM store.mir_elec_candidates WHERE elec_id = ", queries$elec[1], " AND year = ", queries$year[1], " AND month = ", queries$month[1], ";")
+    sql_queries$query_candidates = paste0("SELECT constituency_id, cprov, cmun, candidature_id, candidate_name FROM elections.mir_elec_candidates WHERE elec_id = ", queries$elec[1], " AND year = ", queries$year[1], " AND month = ", queries$month[1], ";")
   }
 
   return(sql_queries)
@@ -301,13 +306,8 @@ list_sql_queries <- function(queries){
 extract_data <- function(queries){
 
   con <- dbConnect(odbc::odbc(),
-                   server = "basilio.cvonxmf06tq5.eu-west-3.rds.amazonaws.com",
-                   user = "elections",
-                   password = "elections",
-                   database = "store",
-                   port = 3306,
-                   timeout = 10,
-                   .connection_string = "Driver={MySQL};")
+                   "db_elections",
+                   timeout = 10)
 
   ## write queries
   sql_queries <- list_sql_queries(queries)
@@ -399,7 +399,7 @@ collapse_votes <-  function(queries, extract){
             "nacional" = group_vars <- c("elec_id", "caut", "candidature_acron"),
             "comunidad" = group_vars <- c("elec_id", "caut", "candidature_acron"),
             "provincia" = group_vars <- c("elec_id", "caut", "cprov", "candidature_acron"),
-            "municipio" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "candidature_acron"),
+            "municipio" = group_vars <- c("elec_id", "cprov", "cmun", "candidature_acron"),
             "distrito" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "candidature_acron"),
             "seccion" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "candidature_acron"),
             "mesa" = group_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "cmesa", "candidature_acron")
@@ -438,7 +438,7 @@ collapse_turn <- function(queries, extract){
             "nacional" = group_vars <- c("elec_id", "year", "month", "caut"),
             "comunidad" = group_vars <- c("elec_id", "year", "month", "caut"),
             "provincia" = group_vars <- c("elec_id", "year", "month", "caut", "cprov"),
-            "municipio" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun"),
+            "municipio" = group_vars <- c("elec_id", "year", "month", "cprov", "cmun"),
             "distrito" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist"),
             "seccion" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec"),
             "mesa" = group_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec", "cmesa")
@@ -484,7 +484,7 @@ output_summary <- function(elec, queries){
           "nacional" = select_vars <- c("elec_id", "year", "month", "caut", output_vars_upper),
           "comunidad" = select_vars <- c("elec_id", "year", "month", "caut", output_vars_upper),
           "provincia" = select_vars <- c("elec_id", "year", "month", "caut", "cprov", output_vars_upper),
-          "municipio" = select_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", output_vars_upper),
+          "municipio" = select_vars <- c("elec_id", "year", "month", "cprov", "cmun", output_vars_upper),
           "distrito" = select_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", output_vars_down),
           "seccion" = select_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec", output_vars_down),
           "mesa" = select_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec", "cmesa", output_vars_down)
@@ -497,7 +497,7 @@ output_summary <- function(elec, queries){
            elec = elec_id) %>%
     mutate(elec = queries$elec_type[1])
 
-  if(queries$by[1] != "nacional"){
+ if (queries$by[1] != "nacional" & queries$by[1] != "municipio") {
 
     elec <- elec %>%
       rename(caut_mir = caut) %>%
@@ -506,7 +506,7 @@ output_summary <- function(elec, queries){
       rename(caut = caut_mir) %>%
       select(-caut_ine, -autonomia)
 
-    }
+  }
 
   if(queries$by[1] %in% c("nacional", "comunidad", "provincia", "municipio")){
     elec <- elec %>%
@@ -539,7 +539,7 @@ format_output <- function(queries, extract){
           "nacional" = join_vars <- c("elec_id", "caut"),
           "comunidad" = join_vars <- c("elec_id", "caut"),
           "provincia" = join_vars <- c("elec_id", "caut", "cprov"),
-          "municipio" = join_vars <- c("elec_id", "caut", "cprov", "cmun"),
+          "municipio" = join_vars <- c("elec_id", "cprov", "cmun"),
           "distrito" = join_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist"),
           "seccion" = join_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec"),
           "mesa" = join_vars <- c("elec_id", "caut", "cprov", "cmun", "cdist", "csec", "cmesa")
@@ -581,7 +581,7 @@ format_output <- function(queries, extract){
 #' @param ine_geo_code Character. INE geographical code to retrieve the results from a given area.
 #' @param by Character. Level at which data is retrieved: "nacional", "comunidad", "provincia", "municipio", "distrito", "seccion", "mesa".
 #' @param output Character. Type of output "summary" or "all".
-#' @return A data frames containing the election results.
+#' @return A data frame containing the election results.
 #' @export
 
 

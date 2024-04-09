@@ -14,15 +14,15 @@ elections(
 )
 }
 \arguments{
-\item{elec}{Character. Type of election "cong", "sen", "municipality", "ref", "euro", "cabildo"}
+\item{elec}{Character. Type of election "congreso", "senado", "municipio", "referendum", "euro", "cabildo"}
 
 \item{year}{Numeric. Year of the election}
 
-\item{month}{Numeric. Month of the election only necessary for 2019 "cong" and "sen". Default is NULL.}
+\item{month}{Numeric. Month of the election only necessary for 2019 "congreso" and "senado". Default is NULL.}
 
 \item{ine_geo_code}{Character. INE geographical code to retrieve the results from a given area.}
 
-\item{by}{Character. Level at which data is retrieved: "national", "region", "province", "municipality", "district", "section", "ballot_box".}
+\item{by}{Character. Level at which data is retrieved: "nacional", "comunidad", "provincia", "municipio", "distrito", "seccion", "mesa".}
 
 \item{output}{Character. Type of output "summary" or "all".}
 }
