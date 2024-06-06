@@ -7,7 +7,7 @@
 lookup_ine_geo_code(geo_area)
 }
 \arguments{
-\item{geo_area}{Character. INE geographical code to retrieve the results from a given area.}
+\item{geo_area}{Character. INE geographical code to retrieve the results from a given area. Input case sensitive.}
 }
 \value{
 A data frames containing the geographical codes.

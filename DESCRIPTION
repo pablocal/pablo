@@ -7,7 +7,7 @@ Authors@R:
            role = c("aut", "cre"),
            email = "pabloca@pm.me",
            comment = c(ORCID = "https://orcid.org/0000-0001-8105-5908"))
-Description: Personal tools for survey analysis and data management.
+Description: Personal tools for survey analysis and data wrangling.
 License: GNU Affero General Public License
 Encoding: UTF-8
 LazyData: true
@@ -15,6 +15,7 @@ RoxygenNote: 7.2.3
 Depends: 
     DBI,
     tidyverse,
+    rlang,
     dbx,
     R (>= 2.10)
 Suggests: 

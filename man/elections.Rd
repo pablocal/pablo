@@ -14,20 +14,20 @@ elections(
 )
 }
 \arguments{
-\item{elec}{Character. Type of election "congreso", "senado", "municipio", "referendum", "euro", "cabildo"}
+\item{elec}{Character. Type of election "congreso", "senado", "municipio", "referendum", "europeas", "cabildo"}
 
-\item{year}{Numeric. Year of the election}
+\item{year}{Numeric. Year of the election.}
 
-\item{month}{Numeric. Month of the election only necessary for 2019 "congreso" and "senado". Default is NULL.}
+\item{month}{Numeric. Month of the election. Only necessary for 2019 "congreso" and "senado". Default is `NULL`.}
 
-\item{ine_geo_code}{Character. INE geographical code to retrieve the results from a given area.}
+\item{ine_geo_code}{Character. INE geographical code to retrieve the results from a given area that might include up to "mesa". Default is `NULL`.}
 
-\item{by}{Character. Level at which data is retrieved: "nacional", "comunidad", "provincia", "municipio", "distrito", "seccion", "mesa".}
+\item{by}{Character. Level at which data is retrieved: "nacional", "comunidad", "provincia", "municipio", "distrito", "seccion", "mesa". The level must be at the same or lower level than `ine_geo_code` if specified. dEfault is `NULL`.}
 
-\item{output}{Character. Type of output "summary" or "all".}
+\item{output}{Character. Type of output "summary" (default).}
 }
 \value{
-A data frames containing the election results.
+A data frame containing the election results.
 }
 \description{
 This function gets election data from a repository.

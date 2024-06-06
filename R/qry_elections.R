@@ -490,12 +490,25 @@ output_summary <- function(elec, queries){
           "mesa" = select_vars <- c("elec_id", "year", "month", "caut", "cprov", "cmun", "cdist", "csec", "cmesa", output_vars_down)
   )
 
+  switch (queries$by[1],
+          "nacional" = arrange_vars <- c("caut"),
+          "comunidad" = arrange_vars <- c("caut"),
+          "provincia" = arrange_vars <- c("caut", "cprov"),
+          "municipio" = arrange_vars <- c("cprov", "cmun"),
+          "distrito" = arrange_vars <- c("caut", "cprov", "cmun", "cdist"),
+          "seccion" = arrange_vars <- c("caut", "cprov", "cmun", "cdist", "csec"),
+          "mesa" = arrange_vars <- c("caut", "cprov", "cmun", "cdist", "csec", "cmesa")
+  )
+
+    arrange_vars_sym <- lapply(arrange_vars, sym)
+
   elec <- elec %>%
     select(all_of(select_vars)) %>%
     rename(party = candidature_acron,
            votes = votes_candidature,
            elec = elec_id) %>%
-    mutate(elec = queries$elec_type[1])
+    mutate(elec = queries$elec_type[1]) %>%
+    arrange(!!!arrange_vars_sym, desc(votes))
 
  if (queries$by[1] != "nacional" & queries$by[1] != "municipio") {
 
@@ -575,12 +588,12 @@ format_output <- function(queries, extract){
 #'
 #' This function gets election data from a repository.
 #'
-#' @param elec Character. Type of election "congreso", "senado", "municipio", "referendum", "euro", "cabildo"
-#' @param year Numeric. Year of the election
-#' @param month Numeric. Month of the election only necessary for 2019 "congreso" and "senado". Default is NULL.
-#' @param ine_geo_code Character. INE geographical code to retrieve the results from a given area.
-#' @param by Character. Level at which data is retrieved: "nacional", "comunidad", "provincia", "municipio", "distrito", "seccion", "mesa".
-#' @param output Character. Type of output "summary" or "all".
+#' @param elec Character. Type of election "congreso", "senado", "municipio", "referendum", "europeas", "cabildo"
+#' @param year Numeric. Year of the election.
+#' @param month Numeric. Month of the election. Only necessary for 2019 "congreso" and "senado". Default is `NULL`.
+#' @param ine_geo_code Character. INE geographical code to retrieve the results from a given area that might include up to "mesa". Default is `NULL`.
+#' @param by Character. Level at which data is retrieved: "nacional", "comunidad", "provincia", "municipio", "distrito", "seccion", "mesa". The level must be at the same or lower level than `ine_geo_code` if specified. dEfault is `NULL`.
+#' @param output Character. Type of output "summary" (default).
 #' @return A data frame containing the election results.
 #' @export
 
@@ -606,7 +619,7 @@ elections <- function(elec,
 #'
 #' This function gets INE geographical codes.
 #'
-#' @param geo_area Character. INE geographical code to retrieve the results from a given area.
+#' @param geo_area Character. INE geographical code to retrieve the results from a given area. Input case sensitive.
 #' @return A data frames containing the geographical codes.
 #' @export
 
