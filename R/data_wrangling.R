@@ -38,7 +38,7 @@ duplicates <- function(df, ..., output = "summary"){
   if(output %in% c("flag", "all")){
     # duplicates flags
     duplicates_flag_df <- df %>%
-      group_by(!!!cols) %>%
+      group_by(across(!!!cols)) %>%
       mutate(dup_flag = n(),
              dup_rank = row_number()) %>%
       ungroup()
@@ -50,7 +50,7 @@ duplicates <- function(df, ..., output = "summary"){
     if(output %in% c("summary", "all")) {
       # summary duplicates
       duplicates_summary <- df %>%
-        group_by(!!!cols) %>%
+        group_by(across(!!!cols)) %>%
         summarise(duplicates = n()) %>%
         ungroup() %>%
         group_by(duplicates) %>%
